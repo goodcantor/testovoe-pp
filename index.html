@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#6c5ce7" />
+    <title>Мониторинг ИОК/PKI — управление SSL/TLS сертификатами</title>
+    <meta name="description" content="Ключевой инструмент для инвентаризации, мониторинга и автоматизации жизненного цикла SSL/TLS сертификатов. Соответствие требованиям ФСТЭК, ЦБ, ФСБ." />
+    <style>
+      :root {
+        --bg: #0f1221;
+        --card: #171a2b;
+        --muted: #a4a8bf;
+        --text: #e8ebff;
+        --brand: #6c5ce7;
+        --brand-2: #1572c9;
+        --accent: #ffd166;
+        --radius: 14px;
+        --shadow: 0 10px 30px rgba(0,0,0,.25);
+        --container: 1120px;
+      }
+
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background:
+          radial-gradient(1000px 600px at 90% -10%, rgba(108,92,231,.25), transparent 60%),
+          radial-gradient(800px 500px at -10% 10%, rgba(0,229,255,.18), transparent 55%),
+          linear-gradient(180deg, #0b0d1a 0%, var(--bg) 35%, #0b0d1a 100%);
+        overflow-x: hidden;
+      }
+
+      .container {
+        width: min(100%, var(--container));
+        margin: 0 auto;
+        padding: 0 16px !important;
+      }
+
+      .header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        backdrop-filter: blur(8px);
+        background: linear-gradient(180deg, rgba(15,18,33,.85), rgba(15,18,33,.5) 60%, transparent);
+        border-bottom: 0;
+        padding: 8px 0;
+      }
+      .header__row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 0;
+      }
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        letter-spacing: .3px;
+      }
+      .logo__mark {
+        width: 28px; height: 28px; border-radius: 8px;
+        background: conic-gradient(from 200deg, var(--brand), var(--brand-2));
+        box-shadow: 0 6px 16px rgba(108,92,231,.5), inset 0 0 22px rgba(0,229,255,.35);
+      }
+      .logo__text { font-size: 18px; }
+
+      .cta-header {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        appearance: none; border: 0;
+        padding: 12px 24px; border-radius: 12px;
+        font-weight: 600; cursor: pointer;
+        color: var(--text); background: #232741;
+        transition: transform .15s ease, filter .2s ease, background .2s ease;
+        font-size: 18px;
+        min-width: 70%;
+      }
+      .btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+      .btn:active { transform: translateY(0); filter: brightness(.97); }
+      .btn--primary {
+        background: linear-gradient(135deg, var(--brand), var(--brand-2));
+        box-shadow: 0 8px 18px rgba(108,92,231,.35);
+      }
+      .btn--ghost {
+        background: transparent; border: 1px solid rgba(255,255,255,.15);
+      }
+
+      .hero {
+        position: relative;
+        padding: 64px 0 24px;
+      }
+      .hero__grid {
+        display: grid; gap: 28px;
+        grid-template-columns: 1.05fr .95fr;
+        align-items: center;
+        padding-top: 20px;
+      }
+      .eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 6px 10px; border-radius: 999px; font-size: 12px; color: var(--muted);
+        background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08);
+      }
+      .hero h1 {
+        margin: 12px 0 10px; font-size: clamp(28px, 5vw, 44px);
+        line-height: 1.1; letter-spacing: .2px;
+      }
+      .hero p { color: var(--muted); margin: 0 0 24px; font-size: clamp(15px, 2.2vw, 18px); }
+
+      .hero__actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .hero__hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
+
+      .illustration {
+        position: relative; isolation: isolate;
+        padding: 16px; border-radius: var(--radius);
+        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+        border: 1px solid rgba(255,255,255,.1);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      [data-reveal] {
+        opacity: 0;
+        transform: translateY(14px);
+        transition: opacity .6s ease, transform .6s ease;
+        will-change: opacity, transform;
+      }
+      [data-reveal][data-reveal="fade-in"] { transform: none; }
+      [data-reveal][data-reveal="zoom-in"] { transform: scale(.96); }
+      .is-visible { opacity: 1; transform: none; }
+      .glow {
+        position: absolute; inset: -40%; z-index: -1; pointer-events: none;
+        background: radial-gradient(closest-side, rgba(85, 64, 245, 0.25), transparent 85%),
+                    radial-gradient(closest-side, rgba(0,229,255,.22), transparent 85%);
+        animation: float 12s ease-in-out infinite alternate;
+        filter: blur(30px);
+        pointer-events: none;
+      }
+      .glow--hero-a { inset: -55% -20% auto auto; opacity: .8; }
+      .glow--hero-b { inset: auto auto -60% -15%; opacity: .5; animation-duration: 16s; }
+      .glow--section { inset: -60% auto auto -30%; opacity: .45; filter: blur(42px); }
+      @keyframes float { from { transform: translate(0, 0) rotate(0); } to { transform: translate(-3%, 2%) rotate(2deg); } }
+
+      .illustration img { width: 100%; height: auto; border-radius: 10px; display: block; }
+      .caption { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+      .section { padding: 40px 0; position: relative; margin-top: 40px; }
+      .section h2 { font-size: clamp(22px, 3.5vw, 32px); margin: 0 0 18px; }
+      .muted { color: var(--muted); }
+
+      .features { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); padding: 0 40px;}
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: var(--radius);
+        padding: 18px; box-shadow: var(--shadow);
+        transition: transform .2s ease, box-shadow .2s ease;
+      }
+      .card:hover { transform: translateY(-3px); box-shadow: 0 16px 38px rgba(0,0,0,.35); }
+      .card h3 { margin: 10px 0 8px; font-size: 18px; }
+      .card p { margin: 0; color: var(--muted); }
+      .icon {
+        width: 34px; height: 34px; border-radius: 8px;
+        display: grid; place-items: center;
+        background: linear-gradient(135deg, rgba(108,92,231,.3), rgba(0,229,255,.25));
+        border: 1px solid rgba(255,255,255,.12);
+      }
+
+      .accordion { margin-top: 14px; }
+      .accordion__btn {
+        width: 100%; text-align: left; background: transparent; border: 1px solid rgba(255,255,255,.12);
+        color: var(--text); padding: 12px 14px; border-radius: 12px; cursor: pointer; font-weight: 600;
+        position: relative; padding-right: 38px;
+      }
+      .accordion__btn::after {
+        content: '▼'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        opacity: .8; font-size: 14px; line-height: 1;
+      }
+      .accordion__btn[aria-expanded="true"]::after { content: '▲'; }
+      .accordion__content {
+        max-height: 0; overflow: hidden; transition: max-height .35s ease;
+      }
+      .accordion__content--open { max-height: 360px; }
+      .steps { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+      .step { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 12px; }
+      .step strong { display: block; margin-bottom: 6px; }
+
+      .cta {
+        margin-top: 20px; padding: 22px; border-radius: 16px;
+        background: linear-gradient(135deg, rgba(108,92,231,.3), rgba(0,229,255,.28));
+        border: 1px solid rgba(255,255,255,.18);
+        display: grid; gap: 14px; grid-template-columns: 1fr auto; align-items: center;
+      }
+      .cta__text { font-size: clamp(16px, 2.5vw, 18px); }
+
+      .slider {
+        position: relative;
+        overflow: hidden;
+      }
+      .slider__viewport { overflow: hidden; }
+      .slider__track {
+        display: flex;
+        will-change: transform;
+        transition: transform .45s cubic-bezier(.2,.8,.2,1);
+      }
+      .slider__slide {
+        min-width: 100%;
+        padding: 14px;
+      }
+      .slider__card {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(255,255,255,.08);
+        background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      }
+      .slider__media { display: block; width: 100%; height: auto; }
+      .slider__caption { padding: 10px 12px; color: var(--muted); font-size: 13px; }
+      .slider__btn {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        background: rgba(15,18,33,.6);
+        border: 1px solid rgba(255,255,255,.15);
+        color: var(--text);
+        width: 32px; height: 32px; border-radius: 999px;
+        display: grid; place-items: center; cursor: pointer;
+        backdrop-filter: blur(6px);
+      }
+      .slider__btn:hover { filter: brightness(1.1); }
+      .slider__btn--prev { left: 10px; position: absolute; z-index: 10;}
+      .slider__btn--next { right: 10px; position: absolute; z-index: 10;}
+      .slider__dots { display: flex; gap: 6px; justify-content: center; padding: 10px; }
+      .slider__dot {
+        width: 8px; height: 8px; border-radius: 999px;
+        background: rgba(255,255,255,.3); border: 0; cursor: pointer;
+      }
+      .slider__dot.is-active { background: linear-gradient(135deg, var(--brand), var(--brand-2)); }
+
+      .footer { padding: 28px 0 40px; color: var(--muted); font-size: 12px; text-align: center; }
+
+      .modal {
+        position: fixed; inset: 0; display: grid; place-items: center;
+        background: rgba(5, 7, 15, .6); backdrop-filter: blur(6px);
+        opacity: 0; pointer-events: none; transition: opacity .2s ease;
+      }
+      .modal--open { opacity: 1; pointer-events: auto; }
+      .modal__card {
+        width: min(92vw, 520px); background: var(--card); border: 1px solid rgba(255,255,255,.12);
+        border-radius: 16px; padding: 18px; box-shadow: var(--shadow);
+      }
+      @keyframes popIn { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+      .modal--open .modal__card { animation: popIn .24s cubic-bezier(.2,.8,.2,1); }
+      .row { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+      .field { display: grid; gap: 6px; }
+      .field input, .field textarea {
+        background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.12);
+        color: var(--text); border-radius: 10px; padding: 10px 12px; font: inherit;
+      }
+      .modal__actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 12px; }
+
+      @media (max-width: 920px) {
+        .hero__grid { grid-template-columns: 1fr; }
+        .features { grid-template-columns: 1fr; }
+        .features { padding: 0 12px; }
+        .steps { grid-template-columns: 1fr; }
+        .cta { grid-template-columns: 1fr; text-align: center; }
+        .cta__actions { justify-content: center; }
+        .hero__actions { flex-direction: column; }
+        .hero__actions .btn { width: 100%; }
+        .cta__actions .btn { width: 100%; }
+        .modal__actions { flex-direction: column; }
+        .modal__actions .btn { width: 100%; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .glow { animation: none; }
+        .btn, .card { transition: none; }
+        [data-reveal] { transition: none; opacity: 1 !important; transform: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="container header__row">
+        <div class="logo" aria-label="InstaLoad">
+          <span class="logo__mark" aria-hidden="true"></span>
+          <span class="logo__text">Secclear</span>
+        </div>
+        
+      </div>
+    </header>
+
+    <main class="container hero">
+      <div class="hero__grid" data-reveal>
+        <div data-reveal data-reveal="fade-in">
+          <div class="eyebrow">
+            <span>🔒</span>
+            <span>Мониторинг ИОК/PKI и SSL/TLS сертификатов</span>
+          </div>
+          <h1>Ключевой инструмент для управления SSL/TLS сертификатами</h1>
+          <p>Инвентаризация, мониторинг доступности AIA/CDP/OCSP, автоматизация выпуска и доставки сертификатов. Соответствие требованиям регуляторов.</p>
+          <div class="hero__actions">
+            <button class="btn btn--primary" data-open-modal>Получить консультацию</button>
+          </div>
+          <div class="hero__hint">Zero Trust • Assume Breach • Соответствие ГОСТ/ФСТЭК/ЦБ РФ</div>
+        </div>
+
+        <div class="illustration" role="img" aria-label="Превью дашборда" data-reveal data-reveal="zoom-in">
+          <div class="glow" aria-hidden="true"></div>
+          <div class="glow glow--hero-a" aria-hidden="true"></div>
+          <div class="glow glow--hero-b" aria-hidden="true"></div>
+          <img alt="Дашборд с графиками и статусами интеграций" src="https://plus.unsplash.com/premium_photo-1661878265739-da90bc1af051?q=80&w=1086&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D?q=80&w=1480&auto=format&fit=crop" />
+          <div class="caption">Безопасность прежде всего</div>
+        </div>
+      </div>
+
+      <section class="section" id="features" data-reveal>
+        <div class="glow glow--section" aria-hidden="true"></div>
+        <h2 style="text-align: center;">Актуальные задачи и вызовы ИБ</h2>
+        <p class="muted" style="text-align: center;">Распределённые системы, микросервисы, облака. Нужны шифрование трафика, контроль сертификатов и соблюдение требований ФСТЭК/ЦБ/ФСБ.</p>
+        <div class="slider" id="benefits" aria-label="Преимущества">
+          <button class="slider__btn slider__btn--prev" aria-label="Предыдущий слайд" data-slide-prev>‹</button>
+          <div class="slider__viewport">
+            <div class="slider__track">
+              <div class="slider__slide" data-reveal>
+        <div class="features" role="list">
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="40ms">
+                    <div class="icon" aria-hidden="true">🔎</div>
+                    <h3>Инвентаризация сертификатов</h3>
+                    <p>Поиск и учёт сертификатов из УЦ и систем. Единый реестр по средам и контурам.</p>
+                  </article>
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="120ms">
+                    <div class="icon" aria-hidden="true">🛰️</div>
+                    <h3>Мониторинг AIA/CDP/OCSP/HSM</h3>
+                    <p>Контроль доступности критичных элементов ИОК и своевременных ответов служб.</p>
+                  </article>
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="200ms">
+                    <div class="icon" aria-hidden="true">🛡️</div>
+                    <h3>Соответствие требованиям</h3>
+                    <p>Политики, отчёты и контроль для ФСТЭК, ЦБ (ГОСТ Р 57580.1-2017), ФСБ и др.</p>
+                  </article>
+                </div>
+              </div>
+              <div class="slider__slide" data-reveal>
+        <div class="features" role="list">
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="40ms">
+                    <div class="icon" aria-hidden="true">⚙️</div>
+                    <h3>Автоматизация выпуска</h3>
+                    <p>Выпуск/обновление и доставка сертификатов в Kubernetes, сервера и АРМ.</p>
+                  </article>
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="120ms">
+                    <div class="icon" aria-hidden="true">🔁</div>
+                    <h3>Без простоев</h3>
+                    <p>Координация обновлений, безопасная ротация ключей, исключение аварий из‑за истечения.</p>
+                  </article>
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="200ms">
+                    <div class="icon" aria-hidden="true">📈</div>
+                    <h3>Отчётность и аналитика</h3>
+                    <p>Дашборды здоровья ИОК, отчёты в PDF/Excel, выгрузки и интеграции с Grafana.</p>
+                  </article>
+                </div>
+              </div>
+              <div class="slider__slide" data-reveal>
+        <div class="features" role="list">
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="40ms">
+                    <div class="icon" aria-hidden="true">☁️</div>
+                    <h3>Гибкий деплой</h3>
+                    <p>On‑prem, приватное облако или гибрид. Соответствие внутренним политикам ИБ.</p>
+                  </article>
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="120ms">
+                    <div class="icon" aria-hidden="true">🤝</div>
+                    <h3>Интеграции</h3>
+                    <p>УЦ Microsoft AD CS, OpenSSL, КриптоПро, внешние УЦ; заявки и CMDB.</p>
+                  </article>
+                  <article class="card" role="listitem" data-reveal data-reveal-delay="200ms">
+                    <div class="icon" aria-hidden="true">🛠️</div>
+                    <h3>Управляемость</h3>
+                    <p>Политики, роли, аудит. Снижение рисков «человеческого фактора» и простоев.</p>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="slider__btn slider__btn--next" aria-label="Следующий слайд" data-slide-next>›</button>
+          <div class="slider__dots" data-dots></div>
+        </div>
+
+        
+
+        <div class="accordion">
+          <button class="accordion__btn" id="learnBtn" aria-expanded="false" aria-controls="learnPanel">
+            Основные принципы (3 шага)
+          </button>
+          <div class="accordion__content" id="learnPanel" aria-hidden="true">
+            <div class="steps">
+              <div class="step"><strong>1. Инвентаризация</strong> Обнаруживаем УЦ, компоненты ИОК и сертификаты во всех средах.</div>
+              <div class="step"><strong>2. Мониторинг</strong> Контролируем AIA/CDP/OCSP/HSM, сроки действий, рисковые атрибуты.</div>
+              <div class="step"><strong>3. Автоматизация</strong> Выпускаем, обновляем и доставляем сертификаты до систем‑потребителей.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cta">
+          <div class="cta__text">Нужен контроль SSL/TLS и ИОК/PKI? Поможем подобрать решение под вашу инфраструктуру.</div>
+          <div class="cta__actions">
+            <button class="btn btn--primary" data-open-modal>Получить консультацию</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      © <span id="year"></span> Secclear • Все права защищены
+    </footer>
+
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+      <div class="modal__card">
+        <h3 id="modalTitle" style="margin: 0 0 10px;">Получить консультацию</h3>
+        <p class="muted" style="margin: 0 0 14px;">Опишите контур ИОК/PKI и задачи — мы предложим оптимальный план.</p>
+        <div class="row">
+          <label class="field">
+            <span>Имя</span>
+            <input type="text" placeholder="Иван" id="name" />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input type="email" placeholder="you@company.com" id="email" />
+          </label>
+        </div>
+        <label class="field" style="margin-top: 10px;">
+          <span>Комментарий</span>
+          <textarea rows="4" placeholder="Коротко опишите задачи" id="message"></textarea>
+        </label>
+        <div class="modal__actions">
+          <button class="btn" data-close-modal>Отмена</button>
+          <button class="btn btn--primary" id="sendBtn">Отправить</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const $ = (q) => document.querySelector(q);
+        const $$ = (q) => Array.from(document.querySelectorAll(q));
+
+        if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+        window.scrollTo(0, 0);
+
+        $('#year').textContent = new Date().getFullYear();
+
+        const learnBtn = $('#learnBtn');
+        const learnPanel = $('#learnPanel');
+        function toggleLearn(open) {
+          const willOpen = open ?? !learnPanel.classList.contains('accordion__content--open');
+          learnPanel.classList.toggle('accordion__content--open', willOpen);
+          learnBtn.setAttribute('aria-expanded', String(willOpen));
+          learnPanel.setAttribute('aria-hidden', String(!willOpen));
+        }
+        learnBtn.addEventListener('click', () => toggleLearn());
+        $$("[data-open-learn]").forEach((b) => b.addEventListener('click', () => toggleLearn(true)));
+
+        const modal = $('#modal');
+        const openModal = () => modal.classList.add('modal--open');
+        const closeModal = () => modal.classList.remove('modal--open');
+        $$("[data-open-modal]").forEach((b) => b.addEventListener('click', openModal));
+        $$("[data-close-modal]").forEach((b) => b.addEventListener('click', closeModal));
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+        $('#sendBtn').addEventListener('click', () => {
+          const name = $('#name').value.trim();
+          const email = $('#email').value.trim();
+          const message = $('#message').value.trim();
+          const payload = { name, email, message, ts: new Date().toISOString() };
+          console.log('Demo request:', payload);
+          alert('Спасибо! Мы свяжемся с вами в ближайшее время.');
+          closeModal();
+        });
+
+        function initSlider(root) {
+          const track = root.querySelector('.slider__track');
+          const prevBtn = root.querySelector('[data-slide-prev]');
+          const nextBtn = root.querySelector('[data-slide-next]');
+          const dotsWrap = root.querySelector('[data-dots]');
+          let idx = 0;
+          let slides = [];
+          let currentPerView = null;
+
+          const cards = Array.from(root.querySelectorAll('.card'));
+
+          function getPerView() {
+            return window.matchMedia('(max-width: 920px)').matches ? 1 : 3;
+          }
+
+          function update() {
+            const offset = -idx * 100;
+            track.style.transform = `translateX(${offset}%)`;
+            Array.from(dotsWrap.children).forEach((d, i) => d.classList.toggle('is-active', i === idx));
+          }
+
+          function build(perView) {
+            track.innerHTML = '';
+            dotsWrap.innerHTML = '';
+            for (let i = 0; i < cards.length; i += perView) {
+              const slide = document.createElement('div');
+              slide.className = 'slider__slide';
+              const wrap = document.createElement('div');
+              wrap.className = 'features';
+              const group = cards.slice(i, i + perView);
+              group.forEach((card) => wrap.appendChild(card));
+              slide.appendChild(wrap);
+              track.appendChild(slide);
+            }
+            slides = Array.from(root.querySelectorAll('.slider__slide'));
+            slides.forEach((_, i) => {
+              const b = document.createElement('button');
+              b.className = 'slider__dot' + (i === idx ? ' is-active' : '');
+              b.setAttribute('aria-label', `Слайд ${i + 1}`);
+              b.addEventListener('click', () => { idx = i; update(); stopAuto(); });
+              dotsWrap.appendChild(b);
+            });
+            update();
+          }
+
+          function go(n) {
+            idx = (n + slides.length) % slides.length;
+            update();
+          }
+
+          prevBtn.addEventListener('click', () => { go(idx - 1); stopAuto(); });
+          nextBtn.addEventListener('click', () => { go(idx + 1); stopAuto(); });
+
+          let timer = null;
+          function startAuto() { timer = setInterval(() => go(idx + 1), 6000); }
+          function stopAuto() { if (timer) { clearInterval(timer); timer = null; } }
+          root.addEventListener('mouseenter', stopAuto);
+          root.addEventListener('mouseleave', startAuto);
+
+          function rebuildIfNeeded() {
+            const desired = getPerView();
+            if (currentPerView !== desired) {
+              currentPerView = desired;
+              idx = 0;
+              build(currentPerView);
+            } else {
+              update();
+            }
+          }
+
+          rebuildIfNeeded();
+          window.addEventListener('resize', rebuildIfNeeded);
+          startAuto();
+        }
+
+        Array.from(document.querySelectorAll('.slider')).forEach(initSlider);
+
+        const revealEls = $$('[data-reveal]');
+        if ('IntersectionObserver' in window && revealEls.length) {
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              const el = entry.target;
+              if (entry.isIntersecting) {
+                el.classList.add('is-visible');
+                io.unobserve(el);
+              }
+            });
+          }, { rootMargin: '0px 0px -10% 0px', threshold: 0.12 });
+          revealEls.forEach((el, i) => {
+            el.style.transitionDelay = (el.hasAttribute('data-reveal-delay') ? el.getAttribute('data-reveal-delay') : `${Math.min(i * 60, 360)}ms`);
+            io.observe(el);
+          });
+        } else {
+          revealEls.forEach((el) => el.classList.add('is-visible'));
+        }
+      })();
+    </script>
+  </body>
+</html>
